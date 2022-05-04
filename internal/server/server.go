@@ -23,7 +23,7 @@ func Start() {
 	}
 	u, _ := net.ListenUDP("udp", &addr)
 
-	fmt.Println("DNS server on port 8090 ...")
+	fmt.Println("[OK] DNS server on port: 8090")
 
 	// Wait to get request on that port
 	for {

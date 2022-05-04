@@ -12,7 +12,7 @@ import (
 func serveDNS(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 	ip, ok := Records[string(request.Questions[0].Name)]
 	if !ok {
-		log.Println("no records found")
+		log.Println("[FAIL] No record found")
 	}
 
 	a, _, _ := net.ParseCIDR(ip + "/24")
@@ -24,7 +24,7 @@ func serveDNS(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 		Class: layers.DNSClassIN,
 	}
 
-	fmt.Println(request.Questions[0].Name)
+	fmt.Printf("[OK] Request name: %s\n", request.Questions[0].Name)
 
 	replyMess := request
 	replyMess.QR = true
