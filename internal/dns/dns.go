@@ -5,11 +5,16 @@ import (
 	"log"
 	"net"
 
+	"github.com/amirhnajafiz/mockapetris/internal/database"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
 
-func serveDNS(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
+type DNS struct {
+	DB database.Database
+}
+
+func (d *DNS) Serve(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 	ip, ok := Records[string(request.Questions[0].Name)]
 	if !ok {
 		log.Println("[FAIL] No record found")
