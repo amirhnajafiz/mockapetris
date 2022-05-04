@@ -1,4 +1,4 @@
-package server
+package dns
 
 type Config struct {
 	IP   string `koanf:"ip"`

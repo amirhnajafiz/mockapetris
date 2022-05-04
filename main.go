@@ -1,7 +1,7 @@
 package main
 
-import "github.com/amirhnajafiz/mockapetris/internal/server"
+import "github.com/amirhnajafiz/mockapetris/internal/dns"
 
 func main() {
-	server.Start()
+	dns.Start(dns.Config{})
 }
