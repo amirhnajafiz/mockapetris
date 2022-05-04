@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/google/gopacket"
@@ -21,6 +22,8 @@ func Start() {
 		IP:   net.ParseIP("127.0.0.1"),
 	}
 	u, _ := net.ListenUDP("udp", &addr)
+
+	fmt.Println("DNS server on port 8090 ...")
 
 	// Wait to get request on that port
 	for {
