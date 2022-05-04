@@ -10,7 +10,7 @@ import (
 
 var Records map[string]string
 
-func Start() {
+func Start(cfg Config) {
 	Records = map[string]string{
 		"google.com": "216.58.196.142",
 		"amazon.com": "176.32.103.205",
@@ -18,8 +18,8 @@ func Start() {
 
 	// Listen on UDP Port
 	addr := net.UDPAddr{
-		Port: 8090,
-		IP:   net.ParseIP("127.0.0.1"),
+		Port: cfg.Port,
+		IP:   net.ParseIP(cfg.IP),
 	}
 	u, _ := net.ListenUDP("udp", &addr)
 
