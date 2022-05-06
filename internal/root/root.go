@@ -1,6 +1,7 @@
 package root
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/amirhnajafiz/mockapetris/internal/database"
@@ -34,9 +35,30 @@ func (r Root) Start() {
 }
 
 func (r Root) AddRecord(w http.ResponseWriter, req *http.Request) {
+	type pack struct {
+		Key   string `json:"url"`
+		Value string `json:"ip"`
+	}
 
+	var p pack
+
+	err := json.NewDecoder(req.Body).Decode(&p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
 func (r Root) RemoveRecord(w http.ResponseWriter, req *http.Request) {
+	type pack struct {
+		Key string `json:"url"`
+	}
 
+	var p pack
+
+	err := json.NewDecoder(req.Body).Decode(&p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
