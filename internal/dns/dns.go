@@ -14,7 +14,7 @@ type DNS struct {
 	DB database.Database
 }
 
-func (d *DNS) Serve(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
+func (d DNS) Serve(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 	ip, ok := Records[string(request.Questions[0].Name)]
 	if !ok {
 		log.Println("[FAIL] No record found")

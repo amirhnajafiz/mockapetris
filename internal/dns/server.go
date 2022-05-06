@@ -14,7 +14,7 @@ type Server struct {
 	Dns DNS
 }
 
-func (s *Server) Start(cfg Config) {
+func (s Server) Start(cfg Config) {
 	Records = map[string]string{
 		"google.com": "216.58.196.142",
 		"amazon.com": "176.32.103.205",

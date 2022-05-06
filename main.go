@@ -9,11 +9,9 @@ func main() {
 	db := database.Database{}
 	db.Register(database.Config{})
 
-	server := dns.Server{
+	dns.Server{
 		Dns: dns.DNS{
 			DB: db,
 		},
-	}
-
-	server.Start(dns.Config{})
+	}.Start(dns.Config{})
 }
