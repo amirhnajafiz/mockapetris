@@ -4,6 +4,7 @@ import (
 	"github.com/amirhnajafiz/mockapetris/internal/config"
 	"github.com/amirhnajafiz/mockapetris/internal/database"
 	"github.com/amirhnajafiz/mockapetris/internal/dns"
+	"github.com/amirhnajafiz/mockapetris/internal/root"
 )
 
 func main() {
@@ -11,6 +12,9 @@ func main() {
 
 	db := database.Database{}
 	db.Register(cfg.Database)
+
+	r := root.Root{}.Register(db)
+	r.Start()
 
 	dns.Server{
 		Dns: dns.DNS{
