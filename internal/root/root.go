@@ -47,6 +47,12 @@ func (r Root) AddRecord(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	err = r.DB.Add(p.Key, p.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (r Root) RemoveRecord(w http.ResponseWriter, req *http.Request) {
@@ -59,6 +65,12 @@ func (r Root) RemoveRecord(w http.ResponseWriter, req *http.Request) {
 	err := json.NewDecoder(req.Body).Decode(&p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = r.DB.Delete(p.Key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
