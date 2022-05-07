@@ -1,0 +1,8 @@
+cahce:
+  address: ""
+  password: ""
+root:
+  host: ""
+dns:
+  ip: ""
+  port: ""
