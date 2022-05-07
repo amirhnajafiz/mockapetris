@@ -13,7 +13,7 @@ func main() {
 	db := database.Database{}
 	db.Register(cfg.Database)
 
-	r := root.Root{}.Register(root.Config{}, db)
+	r := root.Root{}.Register(cfg.Root, db)
 	r.Start()
 
 	dns.Server{

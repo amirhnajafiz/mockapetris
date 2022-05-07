@@ -6,6 +6,7 @@ import (
 
 	"github.com/amirhnajafiz/mockapetris/internal/database"
 	"github.com/amirhnajafiz/mockapetris/internal/dns"
+	"github.com/amirhnajafiz/mockapetris/internal/root"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -14,6 +15,7 @@ import (
 
 type Config struct {
 	Database database.Config `koanf:"cache"`
+	Root     root.Config     `koanf:"root"`
 	Server   dns.Config      `koanf:"dns"`
 }
 
