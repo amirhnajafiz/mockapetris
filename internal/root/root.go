@@ -13,7 +13,7 @@ type Root struct {
 	Address string
 }
 
-func (r Root) Register(d database.Database) Root {
+func (r Root) Register(cfg Config, d database.Database) Root {
 	srv := http.NewServeMux()
 
 	srv.HandleFunc("/put", r.AddRecord)
@@ -22,7 +22,7 @@ func (r Root) Register(d database.Database) Root {
 	return Root{
 		DB:      d,
 		Srv:     srv,
-		Address: ":1348",
+		Address: cfg.Host,
 	}
 }
 
