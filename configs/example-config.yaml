@@ -2,7 +2,7 @@ cahce:
   address: ""
   password: ""
 root:
-  host: ""
+  host: ":1230"
 dns:
-  ip: ""
-  port: ""
+  ip: "127.0.0.1"
+  port: 8090
