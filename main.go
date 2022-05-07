@@ -8,14 +8,18 @@ import (
 )
 
 func main() {
+	// loading configs
 	cfg := config.Load()
 
+	// initializing our redis client
 	db := database.Database{}
 	db.Register(cfg.Database)
 
+	// root server for controlling our dns server
 	r := root.Root{}.Register(cfg.Root, db)
 	r.Start()
 
+	// main dns server
 	dns.Server{
 		Dns: dns.DNS{
 			DB: db,

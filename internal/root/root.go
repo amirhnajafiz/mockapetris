@@ -53,6 +53,8 @@ func (r Root) AddRecord(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	_, _ = w.Write([]byte("record added"))
 }
 
 func (r Root) RemoveRecord(w http.ResponseWriter, req *http.Request) {
@@ -73,4 +75,6 @@ func (r Root) RemoveRecord(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	_, _ = w.Write([]byte("record removed"))
 }

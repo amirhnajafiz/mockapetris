@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"fmt"
 	"log"
 	"net"
 
@@ -10,10 +9,12 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
+// DNS Type
 type DNS struct {
 	DB database.Database
 }
 
+// Serve method will handle the user request
 func (d DNS) Serve(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 	ip, ok := d.DB.Get(string(request.Questions[0].Name))
 	if ok != nil {
@@ -29,7 +30,7 @@ func (d DNS) Serve(u *net.UDPConn, clientAddr net.Addr, request *layers.DNS) {
 		Class: layers.DNSClassIN,
 	}
 
-	fmt.Printf("[OK] Request name: %s\n", request.Questions[0].Name)
+	log.Printf("[OK] Request name: %s\n", request.Questions[0].Name)
 
 	replyMess := request
 	replyMess.QR = true

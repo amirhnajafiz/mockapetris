@@ -1,7 +1,7 @@
 package dns
 
 import (
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/google/gopacket"
@@ -20,7 +20,7 @@ func (s Server) Start(cfg Config) {
 	}
 	u, _ := net.ListenUDP("udp", &addr)
 
-	fmt.Printf("[OK] DNS server on port: %d\n", cfg.Port)
+	log.Printf("[OK] DNS server on port: %d\n", cfg.Port)
 
 	// Wait to get request on that port
 	for {
