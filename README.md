@@ -1,3 +1,7 @@
+<p align="center">
+ <img src="assets/main.webp" width="300" alt="logo" />
+</p>
+
 <h1 align="center">
 Mockapetris
 </h1>
