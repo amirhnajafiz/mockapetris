@@ -1,9 +1,8 @@
-# mockapetris
+<h1 align="center">
+Mockapetris
+</h1>
 
-Implementing a DNS server with Golang programming language.
-
-## How does it work?
-Mockapetris uses a local cache and saves the records of host,ip pairs
+Implementing a DNS server with Golang programming language.  Mockapetris uses a local cache and saves the records of host,ip pairs
 in that cache. After that it listens on port **8090** for our requests
 to get the domain name and return the ip address of that domain.
 
