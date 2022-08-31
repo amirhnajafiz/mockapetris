@@ -3,6 +3,8 @@ package root
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/amirhnajafiz/mockapetris/internal/redis"
 )
 
 type Root struct {
@@ -11,7 +13,7 @@ type Root struct {
 	Address string
 }
 
-func (r Root) Register(cfg Config, d redis.Database) Root {
+func (r Root) Register(d redis.Database) Root {
 	srv := http.NewServeMux()
 
 	srv.HandleFunc("/put", r.AddRecord)
@@ -20,7 +22,7 @@ func (r Root) Register(cfg Config, d redis.Database) Root {
 	return Root{
 		DB:      d,
 		Srv:     srv,
-		Address: cfg.Host,
+		Address: ":1228",
 	}
 }
 
