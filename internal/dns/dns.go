@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/amirhnajafiz/mockapetris/internal/redis"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )

@@ -12,7 +12,7 @@ func main() {
 	db.Register()
 
 	// root server for controlling our dns server
-	r := root.Root{}.Register(cfg.Root, db)
+	r := root.Root{}.Register(db)
 	r.Start()
 
 	// main dns server
@@ -20,5 +20,5 @@ func main() {
 		Dns: dns.DNS{
 			DB: db,
 		},
-	}.Start(cfg.Server)
+	}.Start()
 }

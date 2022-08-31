@@ -12,15 +12,15 @@ type Server struct {
 	Dns DNS
 }
 
-func (s Server) Start(cfg Config) {
+func (s Server) Start() {
 	// Listen on UDP Port
 	addr := net.UDPAddr{
-		Port: cfg.Port,
-		IP:   net.ParseIP(cfg.IP),
+		Port: 8090,
+		IP:   net.ParseIP("0.0.0.0"),
 	}
 	u, _ := net.ListenUDP("udp", &addr)
 
-	log.Printf("[OK] DNS server on port: %d\n", cfg.Port)
+	log.Printf("[OK] DNS server on port: %d\n", 8090)
 
 	// Wait to get request on that port
 	for {
