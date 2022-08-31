@@ -3,17 +3,15 @@ package root
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/amirhnajafiz/mockapetris/internal/database"
 )
 
 type Root struct {
-	DB      database.Database
+	DB      redis.Database
 	Srv     *http.ServeMux
 	Address string
 }
 
-func (r Root) Register(cfg Config, d database.Database) Root {
+func (r Root) Register(cfg Config, d redis.Database) Root {
 	srv := http.NewServeMux()
 
 	srv.HandleFunc("/put", r.AddRecord)

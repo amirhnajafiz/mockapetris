@@ -1,4 +1,4 @@
-package database
+package redis
 
 import (
 	"context"
@@ -6,15 +6,20 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+const (
+	url      = ""
+	password = ""
+)
+
 type Database struct {
 	redis *redis.Client
 }
 
 // Register : creates a new redis connection
-func (db *Database) Register(cfg Config) {
+func (db *Database) Register() {
 	db.redis = redis.NewClient(&redis.Options{
-		Addr:     cfg.Address,
-		Password: cfg.Password,
+		Addr:     url,
+		Password: password,
 		DB:       0,
 	})
 }

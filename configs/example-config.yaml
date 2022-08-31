@@ -1,8 +1,0 @@
-cahce:
-  address: ""
-  password: ""
-root:
-  host: ":1230"
-dns:
-  ip: "127.0.0.1"
-  port: 8090

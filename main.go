@@ -1,19 +1,15 @@
 package main
 
 import (
-	"github.com/amirhnajafiz/mockapetris/internal/config"
-	"github.com/amirhnajafiz/mockapetris/internal/database"
 	"github.com/amirhnajafiz/mockapetris/internal/dns"
+	"github.com/amirhnajafiz/mockapetris/internal/redis"
 	"github.com/amirhnajafiz/mockapetris/internal/root"
 )
 
 func main() {
-	// loading configs
-	cfg := config.Load()
-
 	// initializing our redis client
-	db := database.Database{}
-	db.Register(cfg.Database)
+	db := redis.Database{}
+	db.Register()
 
 	// root server for controlling our dns server
 	r := root.Root{}.Register(cfg.Root, db)

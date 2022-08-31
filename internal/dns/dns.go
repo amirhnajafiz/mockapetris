@@ -4,14 +4,13 @@ import (
 	"log"
 	"net"
 
-	"github.com/amirhnajafiz/mockapetris/internal/database"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
 
 // DNS Type
 type DNS struct {
-	DB database.Database
+	DB redis.Database
 }
 
 // Serve method will handle the user request
