@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+
+# ides
+.vscode/
+.idea/
+
+# cache
+__pycache__/
+cache/
+
