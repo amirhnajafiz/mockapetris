@@ -8,39 +8,32 @@ import dns.rdatatype
 ROOT_SERVER = "198.41.0.4"  # Example: a.root-servers.net
 
 # Create a DNS query message for "example.com" (A record)
-domain = "foo.com"
-query = dns.message.make_query(domain, dns.rdatatype.A)
+domain = "cs.stonybrook.edu"
+query = dns.message.make_query(domain, dns.rdatatype.MX)
 
 # Send query directly to the root name server
 response = dns.query.udp(query, ROOT_SERVER)
-
-# Select Authority and its IP
-tld = response.authority[0][0].to_text()
-print(tld)
-
+tdl = ""
 ip = ""
 
-for addi in response.additional:
-    if addi.name.to_text() == tld:
-        print(addi[0].to_text())
-        ip = addi[0].to_text()
+while True:
+    # Check the response for answer
+    if len(response.answer) > 0:
+        print(response)
         break
 
+    # Select Authority and its IP
+    tld = response.authority[0][0].to_text()
+    print(tld)
 
-response2 = dns.query.udp(query, ip)
-
-# Select Authority and its IP
-tld2 = response2.authority[0][0].to_text()
-print(tld2)
-
-ip2 = ""
-
-for addi in response2.additional:
-    if addi.name.to_text() == tld2:
-        print(addi[0].to_text())
-        ip2 = addi[0].to_text()
-        break
+    # Get the IP of NS from additional
+    ip = ""
+    for addi in response.additional:
+        if addi.name.to_text() == tld:
+            print(addi[0].to_text())
+            ip = addi[0].to_text()
+            break
 
 
-response3 = dns.query.udp(query, ip2)
-print(response3)
+    tmp = dns.query.udp(query, ip)
+    response = tmp
