@@ -52,8 +52,15 @@ class DNSResolver:
                 continue
 
             # send dns request and check response emptiness
-            response = dns.query.udp(self.__query, ip)
-            if len(response.answer) == 0 and len(response.authority) == 0:
+            try:
+                response = dns.query.udp(self.__query, ip, timeout=2.0)
+                if response is None:
+                    continue
+                elif response.rcode() != dns.rcode.NOERROR:
+                    return response, True
+                elif len(response.answer) == 0 and len(response.authority) == 0:
+                    continue
+            except:
                 continue
 
             # check the response for answer

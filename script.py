@@ -29,8 +29,7 @@ if __name__ == "__main__":
     ans, ok = resolver.resolve()
     end_time = time.time()
     if not ok:
-        print("NOT FOUND")
-        sys.exit(1)
+        print("ERROR, QUERY NOT FOUND")
     else:
         print("\nQUESTION SECTION:")
         for q in ans.question:
@@ -43,6 +42,11 @@ if __name__ == "__main__":
         
         for an in ans.answer:
             print(an.to_text())
+
+        if len(ans.additional) > 0:
+            print("\nADDITIONAL SECTION:")
+            for ad in ans.additional:
+                print(ad.to_text())
 
     print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
     print(f'WHEN: {execution_time}')
