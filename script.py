@@ -9,7 +9,7 @@ from src.resolver import DNSResolver
 with open('roots.json', 'r') as f:
     roots = json.load(f)
 
-domain = "cs.stonybrook.edu"
+domain = "google.co.jp"
 qtype = "A"
 
 if __name__ == "__main__":

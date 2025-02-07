@@ -54,6 +54,11 @@ class DNSResolver:
             if len(response.answer) == 0 and len(response.authority) == 0:
                 continue
 
+            print("===")
+            print(ip)
+            print(response)
+            print("===")
+
             # check the response for answer
             if len(response.answer) > 0:
                 return response, True
