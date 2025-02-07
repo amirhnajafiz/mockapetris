@@ -11,3 +11,4 @@ cache/
 
 # python
 venv/
+*.txt

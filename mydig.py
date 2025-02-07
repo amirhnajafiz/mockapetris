@@ -4,8 +4,14 @@ import sys
 import time
 
 from src.resolver import DNSResolver
+from src.tee import Tee
 
 
+
+# set the program stdout to `mydig_output.txt`
+sys.stdout = Tee("mydig_output.txt")
+print("----------------")
+print(' '.join(sys.argv))
 
 # read roots from `roots.json` file
 with open('roots.json', 'r') as f:
