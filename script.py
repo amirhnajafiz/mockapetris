@@ -26,4 +26,14 @@ if __name__ == "__main__":
     if not ok:
         sys.exit(1)
     else:
-        print(ans)
+        print("\nQUESTION SECTION:")
+        for q in ans.question:
+            print(q.to_text())
+
+        if qtype == "MX" or qtype == "NS":
+            print("\nAUTHORITY SECTION:")
+        else:
+            print("\nANSWER SECTION:")
+        
+        for an in ans.answer:
+            print(an.to_text())
