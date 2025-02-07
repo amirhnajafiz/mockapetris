@@ -28,6 +28,8 @@ if __name__ == "__main__":
     start_time = time.time()
     ans, ok = resolver.resolve()
     end_time = time.time()
+
+    # check for response status
     if not ok:
         print("ERROR, QUERY NOT FOUND")
     else:
@@ -48,6 +50,7 @@ if __name__ == "__main__":
             for ad in ans.additional:
                 print(ad.to_text())
 
+    # print metadata
     print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
     print(f'WHEN: {execution_time}')
     print(f'MSG SIZE rcvd: {len(ans.to_wire())} bytes')
