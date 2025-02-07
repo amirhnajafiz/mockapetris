@@ -9,10 +9,15 @@ from src.resolver import DNSResolver
 with open('roots.json', 'r') as f:
     roots = json.load(f)
 
-domain = "cs.stonybrook.edu"
-qtype = "A"
-
 if __name__ == "__main__":
+    # check for command line arguments
+    if len(sys.argv) < 3:
+        print("not enough input arguments: mydig <domain> <query_type>")
+        sys.exit(1)
+
+    domain = sys.argv[1]
+    qtype = sys.argv[2]
+
     # create a resolver instance
     resolver = DNSResolver(roots, domain, qtype)
 
