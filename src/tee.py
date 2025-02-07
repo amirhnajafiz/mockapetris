@@ -2,6 +2,10 @@ import sys
 
 
 
+"""Tee
+this is a tee-like behavior class to redirect stdout to a file.
+this code is from `stackoverflow`.
+"""
 class Tee:
     def __init__(self, file_path):
         self.terminal = sys.stdout

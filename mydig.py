@@ -17,6 +17,7 @@ print(' '.join(sys.argv))
 with open('roots.json', 'r') as f:
     roots = json.load(f)
 
+
 if __name__ == "__main__":
     # check for command line arguments
     if len(sys.argv) < 3:
