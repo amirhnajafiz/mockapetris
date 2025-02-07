@@ -5,11 +5,11 @@ from src.resolver import DNSResolver
 
 
 
-# read roots from `roots.json`
+# read roots from `roots.json` file
 with open('roots.json', 'r') as f:
     roots = json.load(f)
 
-domain = "google.co.jp"
+domain = "cs.stonybrook.edu"
 qtype = "A"
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ for DNS resolve.
 class DNSResolver:
     """class constructor"""
     def __init__(self, roots : dict, domain : str, qtype : str):
+        self.__roots = roots
+
         # create an stack with roots' IPs as initial values
         self.__stack = []
         for ip in roots.values():
@@ -54,17 +56,26 @@ class DNSResolver:
             if len(response.answer) == 0 and len(response.authority) == 0:
                 continue
 
-            print("===")
-            print(ip)
-            print(response)
-            print("===")
-
             # check the response for answer
             if len(response.answer) > 0:
                 return response, True
             
             # add all authority servers
-            for authority in response.additional:
-                self.__stack.append(authority[0].to_text())
-        
+            for authority in response.authority:
+                name = authority[0].to_text()
+                found = False
+
+                # first check in additionals
+                for addi in response.additional:
+                    if addi.name.to_text() == name:
+                        self.__stack.append(addi[0].to_text())
+                        found = True
+                
+                # if not found, then create a new resolver to find it
+                if not found:
+                    resolver = DNSResolver(self.__roots, name, "A")
+                    ans, ok = resolver.resolve()
+                    if ok:
+                        self.__stack.append(ans.answer[0][0].to_text())
+                        
         return None, False
