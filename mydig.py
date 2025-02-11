@@ -3,7 +3,7 @@ import json
 import sys
 import time
 
-from src.resolver import DNSResolver
+from src.dns import DNSResolver
 from src.tee import Tee
 
 

@@ -3,7 +3,7 @@ import json
 import sys
 import time
 
-from src.sec import DNSResolver
+from src.dnssec import DNSResolver
 from src.tee import Tee
 
 
@@ -46,6 +46,16 @@ def main():
     if not ok:
         print("ERROR, QUERY NOT FOUND")
     else:
+        if not resolver.check_dnssec(ans.answer[0].name.to_text()):
+            print("ERROR, DNSSEC NOT VALID")
+        else:
+            print("DNSSEC VALID")
+        
+        if not resolver.check_delegation(ans.answer[0].name.to_text()):
+            print("ERROR, DELEGATION NOT VALID")
+        else:
+            print("DELEGATION VALID")
+
         print("\nQUESTION SECTION:")
         for q in ans.question:
             print(q.to_text())

@@ -1,0 +1,145 @@
+import dns.message
+import dns.query
+import dns.rcode
+import dns.rdatatype
+import dns.flags
+import dns.rrset
+import dns.dnssec
+import dns.resolver
+import dns.name
+
+from .utils import qtype_map, is_valid_ipv4
+
+
+
+class DNSResolver:
+    """a major class that accepts parameters for `dig` and returns an object for dnssec resolve.
+    
+    @params
+    - roots : dictionary
+    - domain : string
+    - qtype: string (enum: A, NS, MX)
+    """
+    def __init__(self, roots: dict):
+        """initializes the dns resolver with root servers.
+        
+        @params:
+        - roots : dictionary, contains ip addresses of root dns servers
+        """
+        self.__stack = [ip for ip in roots.values()]  # create a stack with roots' ips as initial values
+
+    def resolve(self, domain: str, qtype: str) -> tuple[dns.message.Message, bool]:
+        """resolves the input domain and query type.
+        
+        @params:
+        - domain : string, the domain to resolve
+        - qtype : string, the query type (e.g., A, NS, MX)
+        @returns:
+        - tuple[dns.message.Message, bool], the dns response and a boolean indicating success
+        """
+        query = dns.message.make_query(domain, qtype_map(qtype), want_dnssec=True)  # create dns query
+        
+        # start from the top of stack, send query until getting an answer
+        while self.__stack:
+            # get the top ip address, check for ipv4 only
+            ip = self.__stack.pop()
+            if not is_valid_ipv4(ip):
+                continue
+
+            # send dns request and check response emptiness
+            try:
+                response = dns.query.udp(query, ip, timeout=2.0)
+                if response is None:
+                    continue
+                elif response.rcode() != dns.rcode.NOERROR:
+                    return response, True
+                elif not response.answer and not response.authority:
+                    continue
+            except Exception as e:
+                print(f"exception occurred: {e}")
+                continue
+
+            # check the response for answer
+            if response.answer:
+                return response, True
+            
+            # add all authority servers
+            for authority in response.authority:
+                if authority[0].rdtype != dns.rdatatype.NS:
+                    continue
+
+                name = authority[0].to_text()
+                found = False
+
+                # first check in additionals
+                for addi in response.additional:
+                    if addi.name.to_text() == name:
+                        self.__stack.append(addi[0].to_text())
+                        found = True
+                
+                # if not found, then create a new resolver to find it
+                if not found:
+                    ans, ok = self.resolve(name, "A")
+                    if ok:
+                        self.__stack.append(ans.answer[0][0].to_text())
+                        
+        return None, False
+
+    def check_dnssec(self, domain: str) -> bool:
+        """checks if the domain is DNSSEC protected.
+        
+        @params:
+        - domain : string, the domain to check
+        @returns:
+        - bool, indicating if the domain is DNSSEC protected
+        """
+        query = dns.message.make_query(domain, dns.rdatatype.DNSKEY, want_dnssec=True)
+        response = dns.query.udp(query, '8.8.8.8')
+
+        if response.flags & dns.flags.AD:
+            dnskey_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DNSKEY]
+            rrsig_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.RRSIG]
+
+            if dnskey_records and rrsig_records:
+                try:
+                    dnskey_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.DNSKEY, [rr.to_text() for rr in dnskey_records])
+                    rrsig_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.RRSIG, [rr.to_text() for rr in rrsig_records])
+                    dns.dnssec.validate(dnskey_rrset, rrsig_rrset, {dns.name.from_text(domain): dnskey_rrset})
+                except dns.dnssec.ValidationFailure:
+                    return False
+                return True
+            else:
+                return False
+        else:
+            return False
+    
+    def check_delegation(self, domain: str) -> bool:
+        """checks if the domain has DNSSEC delegation.
+        
+        @params:
+        - domain : string, the domain to check
+        @returns:
+        - bool, indicating if the domain has DNSSEC delegation
+        """
+        parent_domain = dns.name.from_text(domain).parent().to_text()
+        request = dns.message.make_query(parent_domain, dns.rdatatype.DS, want_dnssec=True)
+
+        try:
+            response = dns.query.udp(request, '8.8.8.8', timeout=5)
+            if not response.answer:
+                response = dns.query.tcp(request, '8.8.8.8', timeout=5)
+            if response.answer:
+                # validate the DS records
+                ds_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DS]
+                if ds_records:
+                    try:
+                        ds_rrset = dns.rrset.from_text_list(parent_domain, 3600, dns.rdataclass.IN, dns.rdatatype.DS, [rr.to_text() for rr in ds_records])
+                        dns.dnssec.validate(ds_rrset, response.answer[0], {dns.name.from_text(parent_domain): ds_rrset})
+                    except dns.dnssec.ValidationFailure:
+                        return True
+                return True
+            else:
+                return False
+        except dns.resolver.NoAnswer:
+            return False
+        
