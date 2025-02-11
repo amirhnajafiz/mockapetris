@@ -78,7 +78,7 @@ class DNSResolver:
                         
         return None, False
 
-    def check_dnssec(self, domain: str) -> tuple[bool, bool]:
+    def check_dnssec(self, domain: str) -> tuple[bool, bool, str, str]:
         """checks if the domain is DNSSEC protected.
         
         @params:
@@ -92,7 +92,7 @@ class DNSResolver:
         try:
             response = dns.query.udp(query, '8.8.8.8')
         except Exception as e:
-            return False, True
+            return False, True, "", ""
 
         # check if the response contains DNSKEY records and if it is authenticated
         if response.flags & dns.flags.AD:
@@ -107,12 +107,12 @@ class DNSResolver:
                     rrsig_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.RRSIG, [rr.to_text() for rr in rrsig_records])
                     dns.dnssec.validate(dnskey_rrset, rrsig_rrset, {dns.name.from_text(domain): dnskey_rrset})
                 except dns.dnssec.ValidationFailure:
-                    return False, False
-                return True, False
+                    return False, False, "", ""
+                return True, False, dnskey_records[0].to_text(), rrsig_records[0].to_text()
             else:
-                return False, True
+                return False, True, "", ""
         else:
-            return False, True
+            return False, True, "", ""
     
     def check_delegation(self, domain: str) -> bool:
         """checks if the domain has DNSSEC delegation.
@@ -135,13 +135,9 @@ class DNSResolver:
                 # validate the DS records
                 ds_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DS]
                 if ds_records:
-                    try:
-                        # validate the DS records using DNSKEY records
-                        ds_rrset = dns.rrset.from_text_list(parent_domain, 3600, dns.rdataclass.IN, dns.rdatatype.DS, [rr.to_text() for rr in ds_records])
-                        dns.dnssec.validate(ds_rrset, response.answer[0], {dns.name.from_text(parent_domain): ds_rrset})
-                    except dns.dnssec.ValidationFailure:
-                        return True
-                return True
+                    print(f"DS records for {parent_domain}: {ds_records[0].to_text()}")
+                    return True
+                return False
             else:
                 return False
         except dns.resolver.NoAnswer:

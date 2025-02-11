@@ -8,60 +8,65 @@ from src.tee import Tee
 
 
 
-def main():
-    # set the program stdout to `dnssec_output.txt`
-    sys.stdout = Tee("dnssec_output.txt")
-    print("----------------")
-    print(' '.join(sys.argv))
-
-    # read roots from `roots.json` file
+def load_roots(filename):
+    """loads roots from roots.json file"""
     try:
-        with open('roots.json', 'r') as f:
-            roots = json.load(f)
+        with open(filename, 'r') as f:
+            return json.load(f)
     except FileNotFoundError:
-        print("ERROR: roots.json file not found.")
+        print("error: roots.json file not found.")
         sys.exit(1)
     except json.JSONDecodeError:
-        print("ERROR: failed to parse roots.json.")
+        print("error: failed to parse roots.json.")
         sys.exit(1)
 
-    # check for command line arguments
-    if len(sys.argv) < 2:
+def validate_args(argv):
+    """checks if command line arguments are sufficient"""
+    if len(argv) < 2:
         print("not enough input arguments: mydig <domain>")
         sys.exit(1)
+    return argv[1]
 
-    domain = sys.argv[1]
-    qtype = "A"
-
-    # create a resolver instance
-    resolver = DNSResolver(roots)
-    execution_time = datetime.now()
-
-    # get the answer
+def resolve_domain(resolver, domain, qtype):
+    """resolves a domain using the given resolver"""
     start_time = time.time()
     ans, ok = resolver.resolve(domain, qtype)
     end_time = time.time()
+    return ans, ok, start_time, end_time
 
-    # check for response status
+def print_response(ans, ok, resolver):
+    """prints the dns response"""
     if not ok:
-        print("ERROR, QUERY NOT FOUND")
+        print("error, query not found")
     else:
-        if not resolver.check_dnssec(ans.answer[0].name.to_text()):
-            print("ERROR, DNSSEC NOT VALID")
+        # check dnssec and delegation
+        if len(ans.answer) != 0:
+            res, err, dnskey, rrsig = resolver.check_dnssec(ans.answer[0].name.to_text())
         else:
-            print("DNSSEC VALID")
+            res, err, dnskey, rrsig = resolver.check_dnssec(ans.question[0].name.to_text())
+        if err:
+            print("ERROR, DNSSEC is not set on this domain")
+            sys.exit(1)
+        elif not res:
+            print("ERROR, DNSSEC not valid")
+            sys.exit(1)
+        else:
+            print(f'\nDNSKEY: {dnskey}')
+            print(f'\nRRSIG: {rrsig}')
+            print("\nDNSSec is VALID\n")
         
         if not resolver.check_delegation(ans.answer[0].name.to_text()):
-            print("ERROR, DELEGATION NOT VALID")
+            print("error, delegation not valid")
+            sys.exit(1)
         else:
-            print("DELEGATION VALID")
+            print("DELEGATION SIGNER is VALID")
 
+        # print sections
         print("\nQUESTION SECTION:")
         for q in ans.question:
             print(q.to_text())
 
         print("\nANSWER SECTION:")
-        
         for an in ans.answer:
             print(an.to_text())
 
@@ -70,7 +75,8 @@ def main():
             for ad in ans.additional:
                 print(ad.to_text())
 
-    # print metadata
+def print_metadata(start_time, end_time, execution_time, ans, ok):
+    """prints metadata about the query"""
     if ok:
         print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
         print(f'WHEN: {execution_time}')
@@ -79,6 +85,29 @@ def main():
         print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
         print(f'WHEN: {execution_time}')
 
+def main():
+    # set the program stdout to `dnssec_output.txt`
+    sys.stdout = Tee("dnssec_output.txt")
+    print("----------------")
+    print(' '.join(sys.argv))
+
+    # load roots
+    roots = load_roots('roots.json')
+
+    # validate and parse command line arguments
+    domain = validate_args(sys.argv)
+    qtype = "A"
+
+    # create a resolver instance
+    resolver = DNSResolver(roots)
+    execution_time = datetime.now()
+
+    # resolve the domain
+    ans, ok, start_time, end_time = resolve_domain(resolver, domain, qtype)
+
+    # print response and metadata
+    print_response(ans, ok, resolver)
+    print_metadata(start_time, end_time, execution_time, ans, ok)
 
 if __name__ == "__main__":
     main()
