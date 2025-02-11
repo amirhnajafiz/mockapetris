@@ -7,13 +7,7 @@ from .utils import qtype_map, is_valid_ipv4
 
 
 class DNSResolver:
-    """a major class that accepts parameters for `dig` and returns an object for dns resolve.
-    
-    @params
-    - roots : dictionary
-    - domain : string
-    - qtype: string (enum: A, NS, MX)
-    """
+    """a major class that accepts parameters for `dig` and returns an object for dns resolve."""
     def __init__(self, roots: dict):
         """initializes the dns resolver with root servers.
         
@@ -50,7 +44,6 @@ class DNSResolver:
                 elif not response.answer and not response.authority:
                     continue
             except Exception as e:
-                print(f"exception occurred: {e}")
                 continue
 
             # check the response for answer
