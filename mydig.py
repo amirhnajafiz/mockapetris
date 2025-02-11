@@ -8,17 +8,23 @@ from src.tee import Tee
 
 
 
-# set the program stdout to `mydig_output.txt`
-sys.stdout = Tee("mydig_output.txt")
-print("----------------")
-print(' '.join(sys.argv))
+def main():
+    # set the program stdout to `mydig_output.txt`
+    sys.stdout = Tee("mydig_output.txt")
+    print("----------------")
+    print(' '.join(sys.argv))
 
-# read roots from `roots.json` file
-with open('roots.json', 'r') as f:
-    roots = json.load(f)
+    # read roots from `roots.json` file
+    try:
+        with open('roots.json', 'r') as f:
+            roots = json.load(f)
+    except FileNotFoundError:
+        print("ERROR: roots.json file not found.")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        print("ERROR: failed to parse roots.json.")
+        sys.exit(1)
 
-
-if __name__ == "__main__":
     # check for command line arguments
     if len(sys.argv) < 3:
         print("not enough input arguments: mydig <domain> <query_type>")
@@ -28,12 +34,12 @@ if __name__ == "__main__":
     qtype = sys.argv[2]
 
     # create a resolver instance
-    resolver = DNSResolver(roots, domain, qtype)
+    resolver = DNSResolver(roots)
     execution_time = datetime.now()
 
     # get the answer
     start_time = time.time()
-    ans, ok = resolver.resolve()
+    ans, ok = resolver.resolve(domain, qtype)
     end_time = time.time()
 
     # check for response status
@@ -58,6 +64,14 @@ if __name__ == "__main__":
                 print(ad.to_text())
 
     # print metadata
-    print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
-    print(f'WHEN: {execution_time}')
-    print(f'MSG SIZE rcvd: {len(ans.to_wire())} bytes')
+    if ok:
+        print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
+        print(f'WHEN: {execution_time}')
+        print(f'MSG SIZE rcvd: {len(ans.to_wire())} bytes')
+    else:
+        print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
+        print(f'WHEN: {execution_time}')
+
+
+if __name__ == "__main__":
+    main()
