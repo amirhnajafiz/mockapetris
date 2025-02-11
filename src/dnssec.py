@@ -139,20 +139,26 @@ class DNSResolver:
         # create a query for DS records
         parent_domain = dns.name.from_text(domain).parent().to_text()
         request = dns.message.make_query(parent_domain, dns.rdatatype.DS, want_dnssec=True)
+        stack = [ip for ip in self.__roots.values()] + ['8.8.8.8']  # create a stack with roots' ips as initial values
 
-        try:
-            # send the query to a DNS server (e.g., Google Public DNS)
-            response = dns.query.udp(request, '8.8.8.8', timeout=5)
-            if not response.answer:
-                response = dns.query.tcp(request, '8.8.8.8', timeout=5)
-            if response.answer:
-                # validate the DS records
-                ds_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DS]
-                if ds_records:
-                    print(f"DS records for {parent_domain}: {ds_records[0].to_text()}")
-                    return True
-                return False
-            else:
-                return False
-        except dns.resolver.NoAnswer:
-            return False
+        while stack:
+            # get the top ip address, check for ipv4 only
+            ip = stack.pop()
+            if not is_valid_ipv4(ip):
+                continue
+
+            try:
+                # send the query to a DNS server (e.g., Google Public DNS)
+                response = dns.query.udp(request, ip, timeout=5)
+                if not response.answer:
+                    response = dns.query.tcp(request, ip, timeout=5)
+                if response.answer:
+                    # validate the DS records
+                    ds_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DS]
+                    if ds_records:
+                        print(f"DS records for {parent_domain}: {ds_records[0].to_text()}")
+                        return True
+            except dns.resolver.NoAnswer:
+                continue
+        
+        return False
