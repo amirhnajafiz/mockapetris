@@ -89,7 +89,7 @@ class DNSResolver:
         """
         # create a query for DNSKEY records
         query = dns.message.make_query(domain, dns.rdatatype.DNSKEY, want_dnssec=True)
-        stack = [ip for ip in self.__roots.values()] + ['8.8.8.8']  # create a stack with roots' ips as initial values
+        stack = [ip for ip in self.__roots.values()]  # create a stack with roots' ips as initial values
 
         while stack:
             # get the top ip address, check for ipv4 only
@@ -123,10 +123,8 @@ class DNSResolver:
                 else:
                     print(f"DNSKEY or RRSIG records not found for {domain}")
                     continue
-            else:
-                print(f"DNSKEY response not authenticated for {domain}")
         
-        return False, False, "", ""
+        return False, True, "", ""
     
     def check_delegation(self, domain: str) -> bool:
         """checks if the domain has DNSSEC delegation.
@@ -139,7 +137,7 @@ class DNSResolver:
         # create a query for DS records
         parent_domain = dns.name.from_text(domain).parent().to_text()
         request = dns.message.make_query(parent_domain, dns.rdatatype.DS, want_dnssec=True)
-        stack = [ip for ip in self.__roots.values()] + ['8.8.8.8']  # create a stack with roots' ips as initial values
+        stack = [ip for ip in self.__roots.values()]  # create a stack with roots' ips as initial values
 
         while stack:
             # get the top ip address, check for ipv4 only
