@@ -92,7 +92,7 @@ mydig_times = [average_time(site, run_mydig) for site in sites]
 local_dns_times = [average_time(site, run_local_dns) for site in sites]
 google_dns_times = [average_time(site, run_google_dns) for site in sites]
 
-# [lot the data
+# plot the data
 plt.figure(figsize=(15, 8))
 plt.plot(site_names, mydig_times, label='mydig.py', marker='o')
 plt.plot(site_names, local_dns_times, label=f'Local DNS {local_dns}', marker='o')
