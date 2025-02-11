@@ -51,8 +51,8 @@ def print_response(ans, ok, resolver):
             print("ERROR, DNSSEC not valid")
             sys.exit(1)
         else:
-            print(f'\nDNSKEY: {dnskey}')
-            print(f'\nRRSIG: {rrsig}')
+            print(f'\nDNSKEY : {dnskey}')
+            print(f'\nRRSIG : {rrsig}')
             print("\nDNSSec is VALID\n")
         
         if not resolver.check_delegation(ans.answer[0].name.to_text()):

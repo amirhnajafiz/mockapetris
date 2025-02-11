@@ -20,6 +20,7 @@ class DNSResolver:
         @params:
         - roots : dictionary, contains ip addresses of root dns servers
         """
+        self.__roots = roots
         self.__stack = [ip for ip in roots.values()]  # create a stack with roots' ips as initial values
 
     def resolve(self, domain: str, qtype: str) -> tuple[dns.message.Message, bool]:
@@ -75,7 +76,7 @@ class DNSResolver:
                     ans, ok = self.resolve(name, "A")
                     if ok:
                         self.__stack.append(ans.answer[0][0].to_text())
-                        
+  
         return None, False
 
     def check_dnssec(self, domain: str) -> tuple[bool, bool, str, str]:
@@ -88,31 +89,44 @@ class DNSResolver:
         """
         # create a query for DNSKEY records
         query = dns.message.make_query(domain, dns.rdatatype.DNSKEY, want_dnssec=True)
-        # send the query to a DNS server (e.g., Google Public DNS)
-        try:
-            response = dns.query.udp(query, '8.8.8.8')
-        except Exception as e:
-            return False, True, "", ""
+        stack = [ip for ip in self.__roots.values()] + ['8.8.8.8']  # create a stack with roots' ips as initial values
 
-        # check if the response contains DNSKEY records and if it is authenticated
-        if response.flags & dns.flags.AD:
-            # check if the response contains DNSKEY and RRSIG records
-            dnskey_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DNSKEY]
-            rrsig_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.RRSIG]
+        while stack:
+            # get the top ip address, check for ipv4 only
+            ip = stack.pop()
+            if not is_valid_ipv4(ip):
+                continue
 
-            if dnskey_records and rrsig_records:
-                try:
-                    # validate the DNSKEY records using RRSIG records
-                    dnskey_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.DNSKEY, [rr.to_text() for rr in dnskey_records])
-                    rrsig_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.RRSIG, [rr.to_text() for rr in rrsig_records])
-                    dns.dnssec.validate(dnskey_rrset, rrsig_rrset, {dns.name.from_text(domain): dnskey_rrset})
-                except dns.dnssec.ValidationFailure:
-                    return False, False, "", ""
-                return True, False, dnskey_records[0].to_text(), rrsig_records[0].to_text()
+            # send the query to a DNS server (e.g., Google Public DNS)
+            try:
+                response = dns.query.udp(query, ip)
+            except Exception as e:
+                print(f"Error querying DNSKEY for {domain}: {e}")
+                continue
+
+            # check if the response contains DNSKEY records and if it is authenticated
+            if response.flags & dns.flags.AD:
+                # check if the response contains DNSKEY and RRSIG records
+                dnskey_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.DNSKEY]
+                rrsig_records = [rr for rrset in response.answer for rr in rrset if rrset.rdtype == dns.rdatatype.RRSIG]
+
+                if dnskey_records and rrsig_records:
+                    try:
+                        # validate the DNSKEY records using RRSIG records
+                        dnskey_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.DNSKEY, [rr.to_text() for rr in dnskey_records])
+                        rrsig_rrset = dns.rrset.from_text_list(domain, 3600, dns.rdataclass.IN, dns.rdatatype.RRSIG, [rr.to_text() for rr in rrsig_records])
+                        dns.dnssec.validate(dnskey_rrset, rrsig_rrset, {dns.name.from_text(domain): dnskey_rrset})
+                    except dns.dnssec.ValidationFailure:
+                        print(f"Error querying DNSKEY for {domain}: {e}")
+                        return False, False, "", ""
+                    return True, False, dnskey_records[0].to_text(), rrsig_records[0].to_text()
+                else:
+                    print(f"DNSKEY or RRSIG records not found for {domain}")
+                    continue
             else:
-                return False, True, "", ""
-        else:
-            return False, True, "", ""
+                print(f"DNSKEY response not authenticated for {domain}")
+        
+        return False, False, "", ""
     
     def check_delegation(self, domain: str) -> bool:
         """checks if the domain has DNSSEC delegation.
