@@ -49,10 +49,15 @@ def print_response(ans, ok, resolver):
         if err:
             # check if the answer contins DNSKEY or RRSIG records
             if len(ans.answer) == 0:
-                print("ERROR, DNSSEC is not set on this domain")
+                print("DNSSEC not supported")
                 sys.exit(1)
             else:
-                print("ERROR, DNSSEC not valid")
+                # check if the answer contains DNSKEY or RRSIG records
+                for an in ans.answer:
+                    if an.rdtype == 257 or an.rdtype == 46:
+                        print("DNSSEC verification failed")
+                        sys.exit(1)
+                print("DNSSEC not supported")
                 sys.exit(1)
         elif not res:
             print("ERROR, DNSSEC not valid")
@@ -60,7 +65,7 @@ def print_response(ans, ok, resolver):
         else:
             print(f'\nDNSKEY : {dnskey}')
             print(f'\nRRSIG : {rrsig}')
-            print("\nDNSSec is VALID\n")
+            print("\nDNSSEC is VALID\n")
         
         if not resolver.check_delegation(ans.answer[0].name.to_text()):
             print("error, delegation not valid")
