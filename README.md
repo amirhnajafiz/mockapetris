@@ -2,6 +2,10 @@
 
 MyDIG is a simplified version of the `dig` command-line tool, designed to resolve DNS records. It also includes an application called `dnssec` for resolving DNSSEC records.
 
+## Docs
+
+You can find detailed implementation information and benchmark results in the `/docs` directory.
+
 ## Installation and Usage
 
 To use MyDIG, first create a virtual environment and install the necessary dependencies (dnspython, cryptography, and matplotlib).
