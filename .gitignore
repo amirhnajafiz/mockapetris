@@ -11,4 +11,4 @@ cache/
 
 # python
 venv/
-*.txt
+*output.txt
