@@ -12,3 +12,7 @@ cache/
 # python
 venv/
 *output.txt
+
+# self
+benchmark_results.md
+dnssec_implementation.md
