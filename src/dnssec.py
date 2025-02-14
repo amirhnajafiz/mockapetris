@@ -20,6 +20,9 @@ class DNSResolver:
         @params:
         - roots : dictionary, contains ip addresses of root dns servers
         """
+        roots['public-google'] = "8.8.8.8"
+        roots['cloudflare-public-dns-a.cloudflare.com'] = "1.1.1.1"
+
         self.__roots = roots
         self.__stack = [ip for ip in roots.values()]  # create a stack with roots' ips as initial values
 
