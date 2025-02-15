@@ -8,6 +8,7 @@ from src.tee import Tee
 
 
 
+# read the roots.json file
 def load_roots(filename):
     """loads roots from roots.json file"""
     try:
@@ -20,6 +21,7 @@ def load_roots(filename):
         print("error: failed to parse roots.json.")
         sys.exit(1)
 
+# validate command line arguments
 def validate_args(argv):
     """checks if command line arguments are sufficient"""
     if len(argv) < 2:
@@ -27,25 +29,27 @@ def validate_args(argv):
         sys.exit(1)
     return argv[1]
 
+# resolve the domain
 def resolve_domain(resolver, domain, qtype):
     """resolves a domain using the given resolver"""
     start_time = time.time()
-    ans, ok = resolver.resolve(domain, qtype)
+    ans, ok = resolver.resolve(domain, qtype) # resolve the domain using the DNSSec resolver
     end_time = time.time()
     return ans, ok, start_time, end_time
 
+# print the dns response
 def print_response(ans, ok, resolver):
     """prints the dns response"""
     if not ok:
         print("error, query not found")
     else:
-        # check dnssec and delegation
+        # get dnssec and delegation results to print
         if len(ans.answer) != 0:
             res, err, dnskey, rrsig = resolver.check_dnssec(ans.answer[0].name.to_text())
         else:
             res, err, dnskey, rrsig = resolver.check_dnssec(ans.question[0].name.to_text())
         
-        # check if dnssec is valid
+        # get the DNSKEY and RRSIG records
         if err:
             # check if the answer contins DNSKEY or RRSIG records
             if len(ans.answer) == 0:
@@ -87,6 +91,7 @@ def print_response(ans, ok, resolver):
             for ad in ans.additional:
                 print(ad.to_text())
 
+# print metadata about the query
 def print_metadata(start_time, end_time, execution_time, ans, ok):
     """prints metadata about the query"""
     if ok:

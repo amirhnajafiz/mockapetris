@@ -8,7 +8,7 @@ import dns.dnssec
 import dns.resolver
 import dns.name
 
-from .utils import qtype_map, is_valid_ipv4
+from .utils import qtype_map, is_valid_ipv4, sort_roots
 
 
 
@@ -20,10 +20,7 @@ class DNSResolver:
         @params:
         - roots : dictionary, contains ip addresses of root dns servers
         """
-        roots['public-google'] = "8.8.8.8"
-        roots['cloudflare-public-dns-a.cloudflare.com'] = "1.1.1.1"
-
-        self.__roots = roots
+        self.__roots = sort_roots(roots)  # sort the root servers by their IP addresses
         self.__stack = [ip for ip in roots.values()]  # create a stack with roots' ips as initial values
 
     def resolve(self, domain: str, qtype: str) -> tuple[dns.message.Message, bool]:
@@ -128,6 +125,34 @@ class DNSResolver:
                     continue
         
         return False, True, "", ""
+
+    def zone_validation(self, domain: str, ds: str, ksk: str) -> bool:
+        """validates the zone using DS and KSK records.
+
+        @params:
+        - domain : string, the domain to validate
+        - ds : string, the DS record
+        - ksk : string, the KSK record
+        @returns:
+        - bool, indicating if the zone is valid
+        """
+        try:
+            hash = dns.dnssec.make_ds(name = domain, key = ksk, algorithm = 'SHA256').to_text()
+        except dns.dnssec.ValidationFailure as e:
+            return False
+        else:
+            if hash == ds:
+                return True
+            else:
+                return False
+            
+    def get_root_keys(self) -> str:
+        """returns the root DNSKEY records.
+        
+        @returns:
+        - string, the root DNSKEY records
+        """
+        return '20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D'.lower()
     
     def check_delegation(self, domain: str) -> bool:
         """checks if the domain has DNSSEC delegation.

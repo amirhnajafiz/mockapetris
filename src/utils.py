@@ -27,3 +27,11 @@ def is_valid_ipv4(ip_str: str) -> bool:
         return isinstance(ipaddress.ip_address(ip_str), ipaddress.IPv4Address)
     except ValueError:
         return False
+    
+
+def sort_roots(roots: dict) -> dict:
+    """sorts the root servers by their IP addresses"""
+    roots['public-google'] = "8.8.8.8"
+    roots['cloudflare-public-dns-a.cloudflare.com'] = "1.1.1.1"
+    #return dict(sorted(roots.items(), key=lambda x: x[1]))
+    return roots
