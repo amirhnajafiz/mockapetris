@@ -16,3 +16,4 @@ venv/
 # self
 benchmark_results.md
 dnssec_implementation.md
+*.pdf
