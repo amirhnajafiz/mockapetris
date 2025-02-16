@@ -7,7 +7,7 @@ import dns.opcode
 import dns.rcode
 import dns.flags
 
-from .utils import check_a_record, get_rrset, get_dnskey
+from .utils import get_rrset, get_dnskey
 
 
 
@@ -54,11 +54,17 @@ def is_ds_or_a_rrset_verified(zone_rrset, zone_rrsig, dnskey_rrset):
             len(zone_rrset.items), dnskey_rrset.name.to_text()))
         return True
 
-def dnssec_validated(dns_response, dnskey_response, parent_ds_rrset, contains_a_record):
+def dnssec_validated(dns_response, dnskey_response, parent_ds_rrset):
+    has_a_record = False
+    for rrset in dns_response.answer:
+        if rrset.rdtype == dns.rdatatype.A:
+            has_a_record = True
+            break
+
     dnskey_rrsig = get_rrset(dnskey_response.answer, dns.rdatatype.RRSIG)
     dnskey_rrset, ksk = get_dnskey(dnskey_response.answer)
 
-    rr_section, rrset_type = (dns_response.answer, dns.rdatatype.A) if contains_a_record else (dns_response.authority, dns.rdatatype.DS)
+    rr_section, rrset_type = (dns_response.answer, dns.rdatatype.A) if has_a_record else (dns_response.authority, dns.rdatatype.DS)
 
     zone_rrsig = get_rrset(rr_section, dns.rdatatype.RRSIG)
     zone_rrset = get_rrset(rr_section, rrset_type)
@@ -84,11 +90,7 @@ def dnssec_validated(dns_response, dnskey_response, parent_ds_rrset, contains_a_
 
 def query(domain_name, rd_type, name_server, dnssec_flag):
     query = dns.message.make_query(dns.name.from_text(domain_name), rd_type, want_dnssec = dnssec_flag)
-    try:
-        dns_response = dns.query.udp(q = query, where = name_server, timeout = 2)
-        return dns_response
-    except Exception as e:
-        raise e
+    return dns.query.udp(q = query, where = name_server, timeout = 2)
 
 def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_record=False):
     dns_response = None
@@ -102,8 +104,7 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
             print(f"Error when fetching DNSKey from Root Server {root_server}. Error: {e}")
             continue
 
-        contains_a_record = check_a_record(root_dns_response.answer)
-        root_validated, root_ds_rrset = dnssec_validated(root_dns_response, root_dnskey_response, None, contains_a_record)
+        root_validated, root_ds_rrset = dnssec_validated(root_dns_response, root_dnskey_response, None)
         if not root_validated:
             continue
 
@@ -123,8 +124,7 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                             ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, name_server=next_ns_ip_addr, dnssec_flag=True)
                             ns_dns_response = query(domain_name, rd_type, name_server=next_ns_ip_addr, dnssec_flag=True)
 
-                            contains_a_record = check_a_record(ns_dns_response.answer)
-                            ns_validated, ns_ds_rrset = dnssec_validated(ns_dns_response, ns_dnskey_response, parent_ds_rrset, contains_a_record)
+                            ns_validated, ns_ds_rrset = dnssec_validated(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
                             if not ns_validated:
                                 continue
                             parent_ds_rrset = ns_ds_rrset
@@ -153,8 +153,7 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                                 auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, name_server=auth_ip_addr, dnssec_flag=True)
                                 auth_dns_response = query(domain_name, rd_type, name_server=auth_ip_addr, dnssec_flag=True)
 
-                                contains_a_record = check_a_record(auth_dns_response.answer)
-                                auth_validated, auth_ds_rrset = dnssec_validated(auth_dns_response, auth_dnskey_response, parent_ds_rrset, contains_a_record)
+                                auth_validated, auth_ds_rrset = dnssec_validated(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
                                 if not auth_validated:
                                     continue
 

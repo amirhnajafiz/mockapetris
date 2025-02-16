@@ -36,21 +36,6 @@ def is_valid_ipv4(ip_str: str) -> bool:
         return False
 
 
-def check_a_record(answer: dns.rrset) -> bool:
-    """checks if the answer section contains an A record.
-
-    @params:
-    - answer : dns.rrset
-    @returns:
-    - bool
-    """
-    for rrset in answer:
-        if rrset.rdtype == dns.rdatatype.A:
-            return True
-
-    return False
-
-
 def get_rrset(section: dns.rrset, rdtype: dns.rdatatype) -> dns.rrset:
     """returns the specified RRSet from the section.
 
