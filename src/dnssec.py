@@ -6,99 +6,142 @@ import dns.dnssec
 import dns.opcode
 import dns.rcode
 import dns.flags
+import dns.rrset
 
-from .utils import get_rrset, get_dnskey
+from .utils import get_rrset, get_dnskey, query
 
 
 
-def is_zone_verified(parent_ds_rrset, ksk):
-    hash_algo = 'SHA256' if parent_ds_rrset is None else ('SHA256' if parent_ds_rrset[0].digest_type == 2 else 'SHA1')
-    parent_ds_hash = '20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D'.lower() if parent_ds_rrset is None else parent_ds_rrset[0].to_text()
-    zone = '.' if parent_ds_rrset is None else parent_ds_rrset.name.to_text()
+def zone_validation(rrset: dns.rrset.RRset, ksk: dns.rrset.RRset) -> bool:
+    """validates the zone by comparing the DS record of the parent zone with the PubKSK of the child zone.
+    
+    @params:
+    - rrset : dns.rrset.RRset
+    - ksk : dns.rrset.RRset
+    @returns:
+    - bool
+    """
+    # selecting the hash algorithm based on the digest type of the DS record
+    method = 'SHA256' if rrset is None else ('SHA256' if rrset[0].digest_type == 2 else 'SHA1')
+    # getting the DS record from the parent zone
+    phash = '20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D'.lower() if rrset is None else rrset[0].to_text()
+    # getting the zone name
+    zone = '.' if rrset is None else rrset.name.to_text()
+
     try:
-        hash = dns.dnssec.make_ds(name = zone, key = ksk, algorithm = hash_algo).to_text()
+        # generating the DS record from the PubKSK of the child
+        hash = dns.dnssec.make_ds(name = zone, key = ksk, algorithm = method).to_text()
     except dns.dnssec.ValidationFailure as e:
-        print("Hash Algorithm {} not supported: {}".format(hash_algo, e))
+        print(e)
         return False
-    else:
-        if hash == parent_ds_hash:
-            if zone == '.':
-                print("The PubKSK digest matches the root anchor key digest. Hence, Root Zone '{}' successfully verified".format(zone))
-            else:
-                print("The PubKSK digest matches the DS record from the parent zone. Hence, zone '{}' successfully verified".format(zone))
-            return True
-        else:
-            print("The PubKSK digest(s) of the '{}' zone cannot be verified by the DS record from its parent zone. Hence, "
-            "DNSSec verification failed for zone '{}'".format(zone, zone))
-            return False
-
-def is_dnskey_rrset_verified(dnskey_rrset, dnskey_rrsig):
-    try:
-        dns.dnssec.validate(rrset = dnskey_rrset, rrsigset = dnskey_rrsig, keys = {dnskey_rrset.name: dnskey_rrset})
-    except dns.dnssec.ValidationFailure as e:
-        print("DNSSec verification failed during DNSKey RRSet Verification for '{}' zone: {}\n".format(dnskey_rrset.name.to_text(), e))
-        return False
-    else:
-        print("Found {} DNSKey record(s) for zone '{}', which has been verified with its corresponding RRSig by the PubKSK".format(
-            len(dnskey_rrset.items), dnskey_rrset.name.to_text()))
+    
+    # comparing the DS record of the parent zone with the PubKSK of the child zone
+    if hash == phash:
         return True
-
-def is_ds_or_a_rrset_verified(zone_rrset, zone_rrsig, dnskey_rrset):
-    try:
-        dns.dnssec.validate(rrset = zone_rrset, rrsigset = zone_rrsig, keys = {dnskey_rrset.name: dnskey_rrset})
-    except dns.dnssec.ValidationFailure as e:
-        print("DNSSec verification failed during DS/A RRSet Verification for '{}' zone: {}\n".format(dnskey_rrset.name.to_text(), e))
-        return False
     else:
-        print("Found {} DS/A record(s) for zone '{}', which has been verified with its corresponding RRSig by the PubZSK\n".format(
-            len(zone_rrset.items), dnskey_rrset.name.to_text()))
-        return True
+        print("DS record of the parent zone does not match with the PubKSK of the child zone")
+        return False
 
-def dnssec_validated(dns_response, dnskey_response, parent_ds_rrset):
+
+def dnskey_validation(rrset: dns.rrset.RRset, rrsig: dns.rrset.RRset) -> bool:
+    """validates the DNSKEY RRSet by verifying the RRSig with the PubZSK.
+    
+    @params:
+    - rrset : dns.rrset.RRset
+    - rrsig : dns.rrset.RRset
+    @returns:
+    - bool
+    """
+    try:
+        # validating the DNSKEY RRSet by verifying the RRSig with the PubZSK
+        dns.dnssec.validate(rrset=rrset, rrsigset=rrsig, keys={rrset.name: rrset})
+    except dns.dnssec.ValidationFailure as e:
+        print(e)
+        print("DNSSEC verification failed")
+        return False
+
+    return True
+
+
+def ds_validation(rrset: dns.rrset.RRset, rrsig: dns.rrset.RRset, dnskey: dns.rrset.RRset) -> bool:
+    """validates the DS RRSet by verifying the RRSig with the DNSKEY RRSet.
+    
+    @params:
+    - rrset : dns.rrset.RRset
+    - rrsig : dns.rrset.RRset
+    - dnskey : dns.rrset.RRset
+    @returns:
+    - bool
+    """
+    try:
+        # validating the DS RRSet by verifying the RRSig with the DNSKEY RRSet
+        dns.dnssec.validate(rrset = rrset, rrsigset = rrsig, keys = {dnskey.name: dnskey})
+    except dns.dnssec.ValidationFailure as e:
+        print(e)
+        print("DNSSEC verification failed")
+        return False
+
+    return True
+
+
+def dnssec_validated(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrset: dns.rrset.RRset) -> tuple[bool, dns.rrset.RRset]:
+    """validates the DNSSEC response.
+    
+    @params:
+    - response : dns.rrset.RRset
+    - dnskey : dns.rrset.RRset
+    - ds_rrset : dns.rrset.RRset
+    @returns:
+    - tuple[bool, dns.rrset.RRset]
+    """
+    # check if the response has an A record
     has_a_record = False
-    for rrset in dns_response.answer:
+    for rrset in response.answer:
         if rrset.rdtype == dns.rdatatype.A:
             has_a_record = True
             break
 
-    dnskey_rrsig = get_rrset(dnskey_response.answer, dns.rdatatype.RRSIG)
-    dnskey_rrset, ksk = get_dnskey(dnskey_response.answer)
+    # get the DNSKEY RRSet and the KSK from the answer section
+    dnskey_rrsig = get_rrset(dnskey.answer, dns.rdatatype.RRSIG)
+    dnskey_rrset, ksk = get_dnskey(dnskey.answer)
+    rr_section, rrset_type = (response.answer, dns.rdatatype.A) if has_a_record else (response.authority, dns.rdatatype.DS)
 
-    rr_section, rrset_type = (dns_response.answer, dns.rdatatype.A) if has_a_record else (dns_response.authority, dns.rdatatype.DS)
+    # get the DS RRSet and the RRSig from the answer section
+    rrsig = get_rrset(rr_section, dns.rdatatype.RRSIG)
+    rrset = get_rrset(rr_section, rrset_type)
 
-    zone_rrsig = get_rrset(rr_section, dns.rdatatype.RRSIG)
-    zone_rrset = get_rrset(rr_section, rrset_type)
+    # validate the zone
+    if rrset is None:
+        print("DNSSEC not supported")
+        return False, rrset
+    
+    # validate the zone
+    if not zone_validation(ds_rrset, ksk):
+        print("DNSSEC validation failed (zone validation)")
+        return False, rrset
+    
+    # validate the DNSKEY RRSet
+    if not dnskey_validation(dnskey_rrset, dnskey_rrsig):
+        print("DNSSEC validation failed (DNSKEY validation)")
+        return False, rrset
+    
+    # validate the DS RRSet
+    if not ds_validation(rrset, rrsig, dnskey_rrset):
+        print("DNSSEC validation failed (DS validation)")
+        return False, rrset
+    
+    print("DNSSEC validation successful")
+    
+    return True, rrset
 
-    if zone_rrset is None:
-        print("Could not find the DS record for the child zone from the parent '{}' zone. Hence, DNSSEC "
-              "not supported by this domain".format(parent_ds_rrset.name.to_text()))
-        return False, zone_rrset
-    
-    if not is_zone_verified(parent_ds_rrset, ksk):
-        print("Zone DNSSEC verification failed for the '{}' zone".format(parent_ds_rrset.name.to_text()))
-        return False, zone_rrset
-    
-    if not is_dnskey_rrset_verified(dnskey_rrset, dnskey_rrsig):
-        print("DNSKEY DNSSEC verification failed for the '{}' zone".format(dnskey_rrset.name.to_text()))
-        return False, zone_rrset
-    
-    if not is_ds_or_a_rrset_verified(zone_rrset, zone_rrsig, dnskey_rrset):
-        print("DS DNSSEC verification failed for the '{}' zone".format(dnskey_rrset.name.to_text()))
-        return False, zone_rrset
-    
-    return True, zone_rrset
-
-def query(domain_name, rd_type, name_server, dnssec_flag):
-    query = dns.message.make_query(dns.name.from_text(domain_name), rd_type, want_dnssec = dnssec_flag)
-    return dns.query.udp(q = query, where = name_server, timeout = 2)
 
 def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_record=False):
     dns_response = None
 
     for root_server in root_servers:
         try:
-            root_dnskey_response = query('.', dns.rdatatype.DNSKEY, name_server=root_server, dnssec_flag=True)
-            root_dns_response = query(domain_name, rd_type, name_server=root_server, dnssec_flag=True)
+            root_dnskey_response = query('.', dns.rdatatype.DNSKEY, root_server, True)
+            root_dns_response = query(domain_name, rd_type, root_server, True)
             dns_response = root_dns_response
         except Exception as e:
             print(f"Error when fetching DNSKey from Root Server {root_server}. Error: {e}")
@@ -121,8 +164,8 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                     if rrset[0].rdtype == dns.rdatatype.A:
                         next_ns_ip_addr = rrset[0].address
                         try:
-                            ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, name_server=next_ns_ip_addr, dnssec_flag=True)
-                            ns_dns_response = query(domain_name, rd_type, name_server=next_ns_ip_addr, dnssec_flag=True)
+                            ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, next_ns_ip_addr, True)
+                            ns_dns_response = query(domain_name, rd_type, next_ns_ip_addr, True)
 
                             ns_validated, ns_ds_rrset = dnssec_validated(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
                             if not ns_validated:
@@ -150,8 +193,8 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                             auth_ip_addr = auth_rrset[0].address
                             print(f"IP address for Authoritative Name Server {ns_domain_name} was found to be {auth_ip_addr}")
                             try:
-                                auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, name_server=auth_ip_addr, dnssec_flag=True)
-                                auth_dns_response = query(domain_name, rd_type, name_server=auth_ip_addr, dnssec_flag=True)
+                                auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, auth_ip_addr, True)
+                                auth_dns_response = query(domain_name, rd_type, auth_ip_addr, True)
 
                                 auth_validated, auth_ds_rrset = dnssec_validated(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
                                 if not auth_validated:

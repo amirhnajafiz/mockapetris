@@ -1,3 +1,5 @@
+import dns.message
+import dns.query
 import dns.rdatatype
 import dns.rrset
 import ipaddress
@@ -65,3 +67,18 @@ def get_dnskey(answer: dns.rrset) -> tuple[dns.rrset.RRset, dns.rrset.RRset]:
                 if rr.flags == 257:
                     return rrset, rr
     return None, None
+
+
+def query(domain: str, qtype: dns.rdatatype, ns: str, dnssec: bool = False) -> dns.message.Message:
+    """queries the specified domain and returns the response.
+    
+    @params:
+    - domain : string
+    - qtype : dns.rdatatype
+    - ns : string
+    - dnssec : bool
+    @returns:
+    - dns.message.Message
+    """
+    query = dns.message.make_query(dns.name.from_text(domain), qtype, want_dnssec=dnssec)
+    return dns.query.udp(query, ns, timeout=2)
