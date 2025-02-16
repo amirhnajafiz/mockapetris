@@ -1,11 +1,6 @@
 import dns.message
-import dns.name
-import dns.query
 import dns.rdatatype
 import dns.dnssec
-import dns.opcode
-import dns.rcode
-import dns.flags
 import dns.rrset
 
 from .utils import get_rrset, get_dnskey, query
