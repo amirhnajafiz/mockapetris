@@ -23,7 +23,7 @@ def load_roots(filename):
 if __name__ == '__main__':
     # check for command line arguments
     if len(sys.argv) < 2:
-        print("not enough input arguments: dnssec <domain>")
+        print("not enough input arguments: dnssec <domain> <retrys>(default=3)")
         sys.exit(1)
 
     # load the roots
@@ -35,10 +35,16 @@ if __name__ == '__main__':
     # get the domain name and rdtype
     domain_name = sys.argv[1]
     rdtype = "A"
+
+    # get the number of retrys
+    if len(sys.argv) > 2:
+        retrys = int(sys.argv[2])
+    else:
+        retrys = 3
     
     # begin the resolution process
     start_time = time.time()
-    ans, ok = resolve(list(roots.values()), domain_name, rdtype, retrys=3)
+    ans, ok = resolve(list(roots.values()), domain_name, rdtype, retrys)
     end_time = time.time()
 
     # check if the domain name was resolved
