@@ -212,6 +212,10 @@ def resolve(roots: list, domain: str, qtype: dns.rdatatype, retrys: int, CNAME: 
                             break
                         except Exception as e:
                             print(e)
+            
+            # check if the response has an authority section with a SOA record
+            if dns_response.authority and dns_response.authority[0].rdtype == dns.rdatatype.SOA:
+                break
 
         # check if the response has an A record
         for rrset in dns_response.answer:
