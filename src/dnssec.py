@@ -84,7 +84,7 @@ def ds_validation(rrset: dns.rrset.RRset, rrsig: dns.rrset.RRset, dnskey: dns.rr
     return True
 
 
-def dnssec_validated(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrset: dns.rrset.RRset) -> tuple[bool, dns.rrset.RRset]:
+def dnssec_validation(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrset: dns.rrset.RRset) -> tuple[bool, dns.rrset.RRset]:
     """validates the DNSSEC response.
     
     @params:
@@ -135,19 +135,18 @@ def dnssec_validated(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrse
     return True, rrset
 
 
-def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_record=False):
-    dns_response = None
-
-    for root_server in root_servers:
+def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False, RAR: bool = False) -> tuple[dns.message.Message, bool]:
+    for root_server in roots:
+        dns_response = None
         try:
             root_dnskey_response = query('.', dns.rdatatype.DNSKEY, root_server, True)
-            root_dns_response = query(domain_name, rd_type, root_server, True)
+            root_dns_response = query(domain, qtype, root_server, True)
             dns_response = root_dns_response
         except Exception as e:
             print(f"Error when fetching DNSKey from Root Server {root_server}. Error: {e}")
             continue
 
-        root_validated, root_ds_rrset = dnssec_validated(root_dns_response, root_dnskey_response, None)
+        root_validated, root_ds_rrset = dnssec_validation(root_dns_response, root_dnskey_response, None)
         if not root_validated:
             continue
 
@@ -157,7 +156,7 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
             threshold += 1
             if threshold > 3:
                 print("Threshold reached. Could not resolve domain name")
-                return dns_response
+                return dns_response, False
 
             if dns_response.additional:
                 for rrset in dns_response.additional:
@@ -165,17 +164,17 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                         next_ns_ip_addr = rrset[0].address
                         try:
                             ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, next_ns_ip_addr, True)
-                            ns_dns_response = query(domain_name, rd_type, next_ns_ip_addr, True)
+                            ns_dns_response = query(domain, qtype, next_ns_ip_addr, True)
 
-                            ns_validated, ns_ds_rrset = dnssec_validated(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
+                            ns_validated, ns_ds_rrset = dnssec_validation(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
                             if not ns_validated:
                                 continue
                             parent_ds_rrset = ns_ds_rrset
 
-                            if resolve_cname and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.CNAME:
-                                return ns_dns_response
-                            elif return_A_record and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.A:
-                                return ns_dns_response
+                            if CNAME and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.CNAME:
+                                return ns_dns_response, True
+                            elif RAR and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.A:
+                                return ns_dns_response, True
                             dns_response = ns_dns_response
                             break
 
@@ -184,19 +183,19 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
             elif dns_response.authority:
                 for rrset in dns_response.authority:
                     if rrset.rdtype == dns.rdatatype.SOA:
-                        return dns_response
+                        return dns_response, True
                     ns_domain_name = rrset[0].target.to_text()
                     print(f"Iteratively resolving IP of Authoritative Name Server {ns_domain_name}")
-                    ns_dns_response = resolve(ns_domain_name, 'A', return_A_record=True)
-                    if not resolve_cname:
+                    ns_dns_response = resolve(ns_domain_name, dns.rdatatype.A, RAR=True)
+                    if not CNAME:
                         for auth_rrset in ns_dns_response.answer:
                             auth_ip_addr = auth_rrset[0].address
                             print(f"IP address for Authoritative Name Server {ns_domain_name} was found to be {auth_ip_addr}")
                             try:
                                 auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, auth_ip_addr, True)
-                                auth_dns_response = query(domain_name, rd_type, auth_ip_addr, True)
+                                auth_dns_response = query(domain, qtype, auth_ip_addr, True)
 
-                                auth_validated, auth_ds_rrset = dnssec_validated(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
+                                auth_validated, auth_ds_rrset = dnssec_validation(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
                                 if not auth_validated:
                                     continue
 
@@ -205,10 +204,10 @@ def resolve(root_servers, domain_name, rd_type, resolve_cname=False, return_A_re
                             except Exception as e:
                                 print(f"Error when fetching from Authoritative Server {auth_ip_addr} with IP {auth_rrset.name.to_text()}. Error: {e}")
                     else:
-                        return ns_dns_response
+                        return ns_dns_response, True
 
         for rrset in dns_response.answer:
-            if dns.rdatatype.from_text(rd_type).value == dns.rdatatype.A and (rrset.rdtype == dns.rdatatype.A or rrset.rdtype == dns.rdatatype.SOA):
-                return dns_response
+            if dns.rdatatype.from_text(qtype).value == dns.rdatatype.A and (rrset.rdtype == dns.rdatatype.A or rrset.rdtype == dns.rdatatype.SOA):
+                return dns_response, True
 
-    return dns_response
+    return dns_response, True

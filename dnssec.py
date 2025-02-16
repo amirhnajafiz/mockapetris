@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     # begin the resolution process
     start_time = time.time()
-    ans = resolve(list(roots.values()), domain_name, rdtype)
+    ans, ok = resolve(list(roots.values()), domain_name, rdtype)
     end_time = time.time()
 
     # check if the domain name was resolved
@@ -46,21 +46,23 @@ if __name__ == '__main__':
         print("Error: Could not resolve domain name")
         sys.exit(1)
 
-    print("\nQUESTION SECTION:")
-    for q in ans.question:
-        print(q.to_text())
+    # print the response if the domain name was resolved with DNSSEC
+    if ok:
+        print("\nQUESTION SECTION:")
+        for q in ans.question:
+            print(q.to_text())
 
-    print("\nANSWER SECTION:")
-    
-    for an in ans.answer:
-        print(an.to_text())
+        print("\nANSWER SECTION:")
+        
+        for an in ans.answer:
+            print(an.to_text())
 
-    if len(ans.additional) > 0:
-        print("\nADDITIONAL SECTION:")
-        for ad in ans.additional:
-            print(ad.to_text())
+        if len(ans.additional) > 0:
+            print("\nADDITIONAL SECTION:")
+            for ad in ans.additional:
+                print(ad.to_text())
 
-    # print metadata
-    print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
-    print(f'WHEN: {execution_time}')
-    print(f'MSG SIZE rcvd: {len(ans.to_wire())} bytes')
+        # print metadata
+        print(f'\nQuery time: {round((end_time - start_time) * 1000, 2)} msec')
+        print(f'WHEN: {execution_time}')
+        print(f'MSG SIZE rcvd: {len(ans.to_wire())} bytes')
