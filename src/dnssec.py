@@ -25,16 +25,15 @@ def zone_validation(rrset: dns.rrset.RRset, ksk: dns.rrset.RRset) -> bool:
 
     try:
         # generating the DS record from the PubKSK of the child
-        hash = dns.dnssec.make_ds(name = zone, key = ksk, algorithm = method).to_text()
+        hash = dns.dnssec.make_ds(name=zone, key=ksk, algorithm=method)
     except dns.dnssec.ValidationFailure as e:
         print(e)
         return False
     
     # comparing the DS record of the parent zone with the PubKSK of the child zone
-    if hash == phash:
+    if hash.to_text() == phash:
         return True
     else:
-        print("DS record of the parent zone does not match with the PubKSK of the child zone")
         return False
 
 
@@ -52,7 +51,6 @@ def dnskey_validation(rrset: dns.rrset.RRset, rrsig: dns.rrset.RRset) -> bool:
         dns.dnssec.validate(rrset=rrset, rrsigset=rrsig, keys={rrset.name: rrset})
     except dns.dnssec.ValidationFailure as e:
         print(e)
-        print("DNSSEC verification failed")
         return False
 
     return True
@@ -73,7 +71,6 @@ def ds_validation(rrset: dns.rrset.RRset, rrsig: dns.rrset.RRset, dnskey: dns.rr
         dns.dnssec.validate(rrset = rrset, rrsigset = rrsig, keys = {dnskey.name: dnskey})
     except dns.dnssec.ValidationFailure as e:
         print(e)
-        print("DNSSEC verification failed")
         return False
 
     return True
@@ -125,7 +122,7 @@ def dnssec_validation(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrs
         print("DNSSEC validation failed (DS validation)")
         return False, rrset
     
-    print("[INFO] DNSSEC validation successful")
+    print("DNSSEC validation successful")
     
     return True, rrset
 
@@ -151,10 +148,12 @@ def resolve(roots: list, domain: str, qtype: dns.rdatatype, retrys: int, CNAME: 
         try:
             root_dnskey_response = query('.', dns.rdatatype.DNSKEY, ip, True)
             root_dns_response = query(domain, qtype, ip, True)
-            dns_response = root_dns_response
         except Exception as e:
             print(e)
             continue
+
+        # reset the DNS response
+        dns_response = root_dns_response
 
         # validate the DNSSEC response
         print(f"[INFO] validating root {ip} DNSSEC for {domain}")
