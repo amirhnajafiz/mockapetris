@@ -16,7 +16,7 @@ def main():
 
     # read roots from `roots.json` file
     try:
-        with open('roots.json', 'r') as f:
+        with open('configs/roots.json', 'r') as f:
             roots = json.load(f)
     except FileNotFoundError:
         print("ERROR: roots.json file not found.")
