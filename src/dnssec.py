@@ -136,76 +136,111 @@ def dnssec_validation(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrs
 
 
 def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False, RAR: bool = False) -> tuple[dns.message.Message, bool]:
-    for root_server in roots:
+    """resolves the domain name iteratively.
+    
+    @params:
+    - roots : list
+    - domain : string
+    - qtype : dns.rdatatype
+    - CNAME : bool
+    - RAR : bool
+    @returns:
+    - tuple[dns.message.Message, bool]
+    """
+    # iterate over the root servers
+    for ip in roots:
         dns_response = None
+
+        # query the root server
         try:
-            root_dnskey_response = query('.', dns.rdatatype.DNSKEY, root_server, True)
-            root_dns_response = query(domain, qtype, root_server, True)
+            root_dnskey_response = query('.', dns.rdatatype.DNSKEY, ip, True)
+            root_dns_response = query(domain, qtype, ip, True)
             dns_response = root_dns_response
         except Exception as e:
-            print(f"Error when fetching DNSKey from Root Server {root_server}. Error: {e}")
+            print(e)
             continue
 
+        # validate the DNSSEC response
         root_validated, root_ds_rrset = dnssec_validation(root_dns_response, root_dnskey_response, None)
         if not root_validated:
+            print("DNSSEC validation failed")
             continue
 
         threshold = 0
         parent_ds_rrset = root_ds_rrset
+
+        # iterate over the response
         while not dns_response.answer:
+            # check if the threshold is reached
             threshold += 1
             if threshold > 3:
-                print("Threshold reached. Could not resolve domain name")
+                print("[ERROR] Threshold reached, could not resolve domain name.")
                 return dns_response, False
 
+            # iterate over the additional section
             if dns_response.additional:
                 for rrset in dns_response.additional:
                     if rrset[0].rdtype == dns.rdatatype.A:
-                        next_ns_ip_addr = rrset[0].address
+                        # get the IP address of the next authoritative name server
+                        next_ip = rrset[0].address
                         try:
-                            ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, next_ns_ip_addr, True)
-                            ns_dns_response = query(domain, qtype, next_ns_ip_addr, True)
+                            # query the next authoritative name server
+                            ns_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, next_ip, True)
+                            ns_dns_response = query(domain, qtype, next_ip, True)
 
+                            # validate the DNSSEC response
                             ns_validated, ns_ds_rrset = dnssec_validation(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
                             if not ns_validated:
+                                print("DNSSEC validation failed")
                                 continue
-                            parent_ds_rrset = ns_ds_rrset
 
+                            # update the parent DS RRSet
+                            parent_ds_rrset = ns_ds_rrset
+                            dns_response = ns_dns_response
+
+                            # check if the response has a CNAME record
                             if CNAME and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.CNAME:
                                 return ns_dns_response, True
                             elif RAR and ns_dns_response.answer and ns_dns_response.answer[0].rdtype == dns.rdatatype.A:
                                 return ns_dns_response, True
-                            dns_response = ns_dns_response
+                            
                             break
-
                         except Exception as e:
-                            print(f"Error when fetching from Name Server {rrset.name.to_text()} with IP {next_ns_ip_addr}. Error: {e}")
-            elif dns_response.authority:
+                            print(e)
+            elif dns_response.authority: # iterate over the authority section
                 for rrset in dns_response.authority:
+                    # check if the response has a SOA record
                     if rrset.rdtype == dns.rdatatype.SOA:
                         return dns_response, True
+                    
+                    # get the NS record from the authority section
                     ns_domain_name = rrset[0].target.to_text()
-                    print(f"Iteratively resolving IP of Authoritative Name Server {ns_domain_name}")
                     ns_dns_response = resolve(ns_domain_name, dns.rdatatype.A, RAR=True)
-                    if not CNAME:
-                        for auth_rrset in ns_dns_response.answer:
-                            auth_ip_addr = auth_rrset[0].address
-                            print(f"IP address for Authoritative Name Server {ns_domain_name} was found to be {auth_ip_addr}")
-                            try:
-                                auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, auth_ip_addr, True)
-                                auth_dns_response = query(domain, qtype, auth_ip_addr, True)
 
+                    if not CNAME:
+                        # get the IP address of the authoritative name server
+                        for auth_rrset in ns_dns_response.answer:
+                            ip_addr = auth_rrset[0].address
+                            try:
+                                # query the authoritative name server
+                                auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, ip_addr, True)
+                                auth_dns_response = query(domain, qtype, ip_addr, True)
+
+                                # validate the DNSSEC response
                                 auth_validated, auth_ds_rrset = dnssec_validation(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
                                 if not auth_validated:
+                                    print("DNSSEC validation failed")
                                     continue
 
+                                # update the parent DS RRSet
                                 parent_ds_rrset = auth_ds_rrset
                                 dns_response = auth_dns_response
                             except Exception as e:
-                                print(f"Error when fetching from Authoritative Server {auth_ip_addr} with IP {auth_rrset.name.to_text()}. Error: {e}")
+                                print(e)
                     else:
                         return ns_dns_response, True
 
+        # check if the response has an A record
         for rrset in dns_response.answer:
             if dns.rdatatype.from_text(qtype).value == dns.rdatatype.A and (rrset.rdtype == dns.rdatatype.A or rrset.rdtype == dns.rdatatype.SOA):
                 return dns_response, True
