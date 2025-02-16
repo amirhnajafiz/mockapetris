@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     # begin the resolution process
     start_time = time.time()
-    ans, ok = resolve(list(roots.values()), domain_name, rdtype)
+    ans, ok = resolve(list(roots.values()), domain_name, rdtype, retrys=3)
     end_time = time.time()
 
     # check if the domain name was resolved

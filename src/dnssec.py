@@ -130,18 +130,19 @@ def dnssec_validation(response: dns.rrset.RRset, dnskey: dns.rrset.RRset, ds_rrs
         print("DNSSEC validation failed (DS validation)")
         return False, rrset
     
-    print("DNSSEC validation successful")
+    print("[INFO] DNSSEC validation successful")
     
     return True, rrset
 
 
-def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False, RAR: bool = False) -> tuple[dns.message.Message, bool]:
+def resolve(roots: list, domain: str, qtype: dns.rdatatype, retrys: int, CNAME: bool = False, RAR: bool = False) -> tuple[dns.message.Message, bool]:
     """resolves the domain name iteratively.
     
     @params:
     - roots : list
     - domain : string
     - qtype : dns.rdatatype
+    - retrys : int
     - CNAME : bool
     - RAR : bool
     @returns:
@@ -161,20 +162,24 @@ def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False,
             continue
 
         # validate the DNSSEC response
+        print(f"[INFO] validating root {ip} DNSSEC for {domain}")
         root_validated, root_ds_rrset = dnssec_validation(root_dns_response, root_dnskey_response, None)
         if not root_validated:
-            print("DNSSEC validation failed")
             continue
 
         threshold = 0
         parent_ds_rrset = root_ds_rrset
 
-        # iterate over the response
-        while not dns_response.answer:
+        # loop until the response has an answer
+        while True:
+            # check if the response has an answer
+            if dns_response.answer:
+                break
+
             # check if the threshold is reached
             threshold += 1
-            if threshold > 3:
-                print("[ERROR] Threshold reached, could not resolve domain name.")
+            if threshold > retrys:
+                print("[ERROR] Retry threshold reached, could not resolve domain name.")
                 return dns_response, False
 
             # iterate over the additional section
@@ -189,9 +194,9 @@ def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False,
                             ns_dns_response = query(domain, qtype, next_ip, True)
 
                             # validate the DNSSEC response
+                            print(f"[INFO] validating {next_ip} DNSSEC for {domain}")
                             ns_validated, ns_ds_rrset = dnssec_validation(ns_dns_response, ns_dnskey_response, parent_ds_rrset)
                             if not ns_validated:
-                                print("DNSSEC validation failed")
                                 continue
 
                             # update the parent DS RRSet
@@ -207,38 +212,6 @@ def resolve(roots: list, domain: str, qtype: dns.rdatatype, CNAME: bool = False,
                             break
                         except Exception as e:
                             print(e)
-            elif dns_response.authority: # iterate over the authority section
-                for rrset in dns_response.authority:
-                    # check if the response has a SOA record
-                    if rrset.rdtype == dns.rdatatype.SOA:
-                        return dns_response, True
-                    
-                    # get the NS record from the authority section
-                    ns_domain_name = rrset[0].target.to_text()
-                    ns_dns_response = resolve(ns_domain_name, dns.rdatatype.A, RAR=True)
-
-                    if not CNAME:
-                        # get the IP address of the authoritative name server
-                        for auth_rrset in ns_dns_response.answer:
-                            ip_addr = auth_rrset[0].address
-                            try:
-                                # query the authoritative name server
-                                auth_dnskey_response = query(parent_ds_rrset.name.to_text(), dns.rdatatype.DNSKEY, ip_addr, True)
-                                auth_dns_response = query(domain, qtype, ip_addr, True)
-
-                                # validate the DNSSEC response
-                                auth_validated, auth_ds_rrset = dnssec_validation(auth_dns_response, auth_dnskey_response, parent_ds_rrset)
-                                if not auth_validated:
-                                    print("DNSSEC validation failed")
-                                    continue
-
-                                # update the parent DS RRSet
-                                parent_ds_rrset = auth_ds_rrset
-                                dns_response = auth_dns_response
-                            except Exception as e:
-                                print(e)
-                    else:
-                        return ns_dns_response, True
 
         # check if the response has an A record
         for rrset in dns_response.answer:
